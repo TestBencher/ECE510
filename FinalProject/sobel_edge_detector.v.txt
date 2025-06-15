@@ -1,0 +1,39 @@
+module sobel_edge_detector (
+    input wire [63:0] image,            // 8x8 binary image
+    output wire [63:0] edge_out         // 8x8 binary edge map (renamed!)
+);
+
+    function automatic bit get_pixel(input [63:0] img, input int x, input int y);
+        if (x < 0 || x > 7 || y < 0 || y > 7)
+            return 0;
+        return img[y * 8 + x];
+    endfunction
+
+    integer gx, gy, mag;
+    reg [63:0] edge_map;
+
+    always @* begin
+        edge_map = 64'b0;
+
+        for (int y = 1; y < 7; y++) begin
+            for (int x = 1; x < 7; x++) begin
+                gx = (
+                    get_pixel(image, x+1, y-1) + 2*get_pixel(image, x+1, y) + get_pixel(image, x+1, y+1)
+                  - get_pixel(image, x-1, y-1) - 2*get_pixel(image, x-1, y) - get_pixel(image, x-1, y+1)
+                );
+
+                gy = (
+                    get_pixel(image, x-1, y+1) + 2*get_pixel(image, x, y+1) + get_pixel(image, x+1, y+1)
+                  - get_pixel(image, x-1, y-1) - 2*get_pixel(image, x, y-1) - get_pixel(image, x+1, y-1)
+                );
+
+                mag = (gx >= 0 ? gx : -gx) + (gy >= 0 ? gy : -gy);
+                if (mag > 2)
+                    edge_map[y * 8 + x] = 1;
+            end
+        end
+    end
+
+    assign edge_out = edge_map;
+
+endmodule
