@@ -1,0 +1,236 @@
+module shape_classifier (
+    input  wire [63:0] edge_map,       // Flattened binary image
+    output reg  [1:0]  class_out       // 0 = triangle, 1 = square, 2 = circle
+);
+// Fixed-point weight matrix (3 classes × 64 features)
+    reg signed [7:0] W [0:192];
+    reg signed [15:0] BIAS [0:2];
+    reg signed [15:0] score [0:2];
+    integer i, c;
+// Auto-generated initial block for shape_classifier.v
+initial begin
+    W[0] = 8'sd0;
+    W[1] = 8'sd0;
+    W[2] = 8'sd0;
+    W[3] = -8'sd1;
+    W[4] = -8'sd2;
+    W[5] = -8'sd1;
+    W[6] = 8'sd0;
+    W[7] = 8'sd0;
+    W[8] = 8'sd0;
+    W[9] = -8'sd1;
+    W[10] = -8'sd2;
+    W[11] = -8'sd5;
+    W[12] = -8'sd5;
+    W[13] = -8'sd5;
+    W[14] = -8'sd2;
+    W[15] = 8'sd0;
+    W[16] = 8'sd0;
+    W[17] = -8'sd1;
+    W[18] = -8'sd10;
+    W[19] = -8'sd14;
+    W[20] = -8'sd14;
+    W[21] = -8'sd7;
+    W[22] = 8'sd3;
+    W[23] = 8'sd3;
+    W[24] = -8'sd1;
+    W[25] = -8'sd3;
+    W[26] = -8'sd13;
+    W[27] = 8'sd6;
+    W[28] = 8'sd15;
+    W[29] = 8'sd5;
+    W[30] = 8'sd6;
+    W[31] = 8'sd5;
+    W[32] = -8'sd1;
+    W[33] = -8'sd2;
+    W[34] = -8'sd7;
+    W[35] = 8'sd18;
+    W[36] = 8'sd11;
+    W[37] = 8'sd0;
+    W[38] = 8'sd0;
+    W[39] = 8'sd0;
+    W[40] = 8'sd0;
+    W[41] = -8'sd2;
+    W[42] = -8'sd7;
+    W[43] = 8'sd5;
+    W[44] = 8'sd7;
+    W[45] = 8'sd0;
+    W[46] = -8'sd1;
+    W[47] = 8'sd2;
+    W[48] = 8'sd0;
+    W[49] = -8'sd1;
+    W[50] = -8'sd7;
+    W[51] = -8'sd7;
+    W[52] = -8'sd2;
+    W[53] = 8'sd2;
+    W[54] = 8'sd6;
+    W[55] = 8'sd4;
+    W[56] = 8'sd0;
+    W[57] = 8'sd0;
+    W[58] = -8'sd1;
+    W[59] = -8'sd4;
+    W[60] = -8'sd4;
+    W[61] = 8'sd1;
+    W[62] = 8'sd8;
+    W[63] = 8'sd8;
+    W[64] = 8'sd0;
+    W[65] = 8'sd0;
+    W[66] = 8'sd0;
+    W[67] = 8'sd0;
+    W[68] = -8'sd1;
+    W[69] = -8'sd1;
+    W[70] = 8'sd0;
+    W[71] = 8'sd0;
+    W[72] = 8'sd0;
+    W[73] = 8'sd0;
+    W[74] = -8'sd1;
+    W[75] = -8'sd10;
+    W[76] = -8'sd13;
+    W[77] = -8'sd8;
+    W[78] = -8'sd2;
+    W[79] = 8'sd0;
+    W[80] = 8'sd0;
+    W[81] = -8'sd1;
+    W[82] = 8'sd15;
+    W[83] = 8'sd12;
+    W[84] = 8'sd18;
+    W[85] = 8'sd8;
+    W[86] = 8'sd9;
+    W[87] = 8'sd10;
+    W[88] = 8'sd0;
+    W[89] = -8'sd9;
+    W[90] = 8'sd15;
+    W[91] = -8'sd17;
+    W[92] = -8'sd4;
+    W[93] = -8'sd6;
+    W[94] = -8'sd12;
+    W[95] = -8'sd5;
+    W[96] = -8'sd1;
+    W[97] = -8'sd15;
+    W[98] = 8'sd17;
+    W[99] = -8'sd4;
+    W[100] = -8'sd1;
+    W[101] = 8'sd16;
+    W[102] = 8'sd1;
+    W[103] = -8'sd17;
+    W[104] = -8'sd1;
+    W[105] = -8'sd7;
+    W[106] = 8'sd12;
+    W[107] = -8'sd8;
+    W[108] = 8'sd13;
+    W[109] = -8'sd11;
+    W[110] = 8'sd3;
+    W[111] = -8'sd5;
+    W[112] = 8'sd0;
+    W[113] = -8'sd1;
+    W[114] = 8'sd16;
+    W[115] = -8'sd4;
+    W[116] = -8'sd2;
+    W[117] = 8'sd3;
+    W[118] = -8'sd8;
+    W[119] = 8'sd9;
+    W[120] = 8'sd0;
+    W[121] = 8'sd0;
+    W[122] = 8'sd9;
+    W[123] = 8'sd0;
+    W[124] = -8'sd15;
+    W[125] = 8'sd1;
+    W[126] = 8'sd5;
+    W[127] = 8'sd2;
+    W[128] = 8'sd0;
+    W[129] = 8'sd0;
+    W[130] = 8'sd0;
+    W[131] = 8'sd1;
+    W[132] = 8'sd3;
+    W[133] = 8'sd2;
+    W[134] = 8'sd0;
+    W[135] = 8'sd0;
+    W[136] = 8'sd0;
+    W[137] = 8'sd1;
+    W[138] = 8'sd3;
+    W[139] = 8'sd15;
+    W[140] = 8'sd19;
+    W[141] = 8'sd12;
+    W[142] = 8'sd4;
+    W[143] = 8'sd1;
+    W[144] = 8'sd0;
+    W[145] = 8'sd2;
+    W[146] = -8'sd5;
+    W[147] = 8'sd2;
+    W[148] = -8'sd4;
+    W[149] = -8'sd1;
+    W[150] = -8'sd12;
+    W[151] = -8'sd14;
+    W[152] = 8'sd1;
+    W[153] = 8'sd12;
+    W[154] = -8'sd1;
+    W[155] = 8'sd10;
+    W[156] = -8'sd11;
+    W[157] = 8'sd1;
+    W[158] = 8'sd5;
+    W[159] = 8'sd0;
+    W[160] = 8'sd2;
+    W[161] = 8'sd18;
+    W[162] = -8'sd11;
+    W[163] = -8'sd13;
+    W[164] = -8'sd9;
+    W[165] = -8'sd16;
+    W[166] = -8'sd1;
+    W[167] = 8'sd17;
+    W[168] = 8'sd1;
+    W[169] = 8'sd9;
+    W[170] = -8'sd5;
+    W[171] = 8'sd3;
+    W[172] = -8'sd19;
+    W[173] = 8'sd11;
+    W[174] = -8'sd3;
+    W[175] = 8'sd3;
+    W[176] = 8'sd0;
+    W[177] = 8'sd2;
+    W[178] = -8'sd9;
+    W[179] = 8'sd11;
+    W[180] = 8'sd4;
+    W[181] = -8'sd5;
+    W[182] = 8'sd2;
+    W[183] = -8'sd13;
+    W[184] = 8'sd0;
+    W[185] = 8'sd0;
+    W[186] = -8'sd8;
+    W[187] = 8'sd4;
+    W[188] = 8'sd20;
+    W[189] = -8'sd2;
+    W[190] = -8'sd13;
+    W[191] = -8'sd10;
+
+    BIAS[0] = 16'sd11;
+    BIAS[1] = -16'sd41;
+    BIAS[2] = 16'sd30;
+end
+
+
+
+
+
+
+    always @(*) begin
+        // Initialize scores with biases
+        for (c = 0; c < 3; c = c + 1)
+            score[c] = BIAS[c];
+
+        // Compute dot product W·x
+        for (c = 0; c < 3; c = c + 1) begin
+            for (i = 0; i < 64; i = i + 1) begin
+                if (edge_map[i])  // only add weights where x[i] = 1
+                    score[c] = score[c] + W[c*64 + i];
+            end
+        end
+
+        // Argmax logic
+        if (score[0] >= score[1] && score[0] >= score[2])
+            class_out = 2'd0;
+        else if (score[1] >= score[2])
+            class_out = 2'd1;
+        else
+            class_out = 2'd2;
+    end
+endmodule
