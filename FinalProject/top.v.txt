@@ -1,0 +1,92 @@
+module top (
+    input wire clk,
+    input wire btnC,
+    output wire [15:0] led,
+    output wire [6:0] seg,
+    output wire [7:0] an
+);
+
+    // === Shape ROM ===
+    reg [63:0] shape_mem [0:4];
+    initial begin
+        shape_mem[0] = 64'b00000000_00000000_00111100_00100100_00100100_00111100_00000000_00000000; // Square
+        shape_mem[1] = 64'b00000000_00011000_00111100_01111110_01111110_00111100_00011000_00000000; // Circle
+        shape_mem[2] = 64'b00000000_00001000_00011100_00111110_01111111_00011100_00001000_00000000; // Triangle
+        shape_mem[3] = 64'b00000000_00001000_00001000_01111110_00001000_00001000_00000000_00000000; // Plus
+        shape_mem[4] = 64'b00000000_01000010_00100100_00011000_00011000_00100100_01000010_00000000; // X
+    end
+
+    // === Button One-Pulse Generator ===
+    reg btn_prev = 0;
+    wire btn_edge;
+
+    always @(posedge clk) btn_prev <= btnC;
+    assign btn_edge = btnC & ~btn_prev;
+
+    // === Shape Selector Index
+    reg [2:0] shape_index = 0;
+    always @(posedge clk) begin
+        if (btn_edge)
+            shape_index <= shape_index + 1;
+    end
+
+    wire [63:0] image;
+    assign image = shape_mem[shape_index];
+
+    // === Edge Detection
+    wire [63:0] edge_result;
+    sobel_edge_detector edge_inst (
+        .image(image),
+        .edge_out(edge_result)
+    );
+
+    // === Classifier Output
+    wire [1:0] class_out;
+    shape_classifier classifier_inst (
+        .edge_map(edge_result),
+        .class_out(class_out)
+    );
+
+    // === LED Debug Output
+    assign led = edge_result[31:16];
+
+    // === Shape Name ? 7-Segment
+    reg [7:0] letters[0:3];
+    always @(*) begin
+        case (class_out)
+            2'd0: begin letters[0]="T"; letters[1]="R"; letters[2]="I"; letters[3]="A"; end
+            2'd1: begin letters[0]="S"; letters[1]="Q"; letters[2]="U"; letters[3]="A"; end
+            2'd2: begin letters[0]="C"; letters[1]="I"; letters[2]="R"; letters[3]="C"; end
+            default: begin letters[0]=" "; letters[1]=" "; letters[2]=" "; letters[3]=" "; end
+        endcase
+    end
+
+    // === 7-Segment Digit Multiplexing
+    reg [20:0] clkdiv = 0;
+    always @(posedge clk)
+        clkdiv <= clkdiv + 1;
+
+    wire [1:0] sel = clkdiv[20:19];
+    reg [3:0] digit_select;
+    reg [7:0] current_char;
+
+    always @(*) begin
+        case (sel)
+            2'd0: begin digit_select = 4'b1110; current_char = letters[0]; end
+            2'd1: begin digit_select = 4'b1101; current_char = letters[1]; end
+            2'd2: begin digit_select = 4'b1011; current_char = letters[2]; end
+            2'd3: begin digit_select = 4'b0111; current_char = letters[3]; end
+        endcase
+    end
+
+    // === ASCII to Segment Decoder
+    wire [6:0] current_seg;
+    char_to_7seg char_decoder (
+        .ascii(current_char),
+        .seg(current_seg)
+    );
+
+    assign seg = current_seg;
+    assign an = {4'b1111, digit_select};
+
+endmodule
