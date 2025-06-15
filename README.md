@@ -1,6 +1,6 @@
 # ECE510
 Github repo for ECE510 Course work.
-This readme contains only the documenatation structure for the Main project. For Challenges and Codefests, Please check out github wiki page 
+This readme contains only the documenatation structure for the Main project. For Challenges and Codefests, Please check out github wiki page. 
 The main documentation for the project is within the Final Project folder and is named as Chiplet Design.docx
 
 
